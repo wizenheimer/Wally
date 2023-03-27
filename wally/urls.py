@@ -7,6 +7,7 @@ from drf_yasg import openapi
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/", include("authentication.urls")),
+    path("expenses/", include("expenses.urls")),
 ]
 
 # Swagger Configuration

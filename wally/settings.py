@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     # local apps
     "authentication",
+    "expenses",
 ]
 
 MIDDLEWARE = [
@@ -152,4 +153,14 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
+}
+
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+        }
+    }
 }
