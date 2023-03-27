@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
 import jwt
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .serializers import RegisterSerializer
 from .models import User
@@ -45,6 +47,15 @@ class RegisterView(generics.GenericAPIView):
 
 
 class VerifyEmail(generics.GenericAPIView):
+    # serializer_class = EmailVerificationSerializer
+    token_parameter_config = openapi.Parameter(
+        "token",
+        in_=openapi.IN_QUERY,
+        description="Access Token",
+        type=openapi.TYPE_STRING,
+    )
+
+    @swagger_auto_schema(manual_parameters=[token_parameter_config])
     def get(self, request):
         token = request.GET.get("token")
         try:
