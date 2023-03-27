@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+from django.contrib import auth
 from .models import User
 
 
@@ -24,11 +26,33 @@ class RegisterSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
-# class EmailVerificationSerializer(serializers.ModelSerializer):
-#     token = serializers.CharField(max_length=555)
+class LoginSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True, min_length=6, max_length=400)
+    password = serializers.CharField(required=True, write_only=True)
+    access_token = serializers.CharField(read_only=True)
+    refresh_token = serializers.CharField(read_only=True)
 
-#     class Meta:
-#         Model = User
-#         fields = [
-#             "token",
-#         ]
+    class Meta:
+        model = User
+        fields = ["email", "password", "access_token", "refresh_token"]
+
+    def validate(self, attrs):
+        email = attrs.get("email", "")
+        password = attrs.get("password", "")
+
+        user = auth.authenticate(email=email, password=password)
+
+        if not user:
+            raise AuthenticationFailed("Invalid credentials. Authenthication failed.")
+
+        if not user.is_active:
+            raise AuthenticationFailed("Account is inactive.")
+
+        if not user.is_verified:
+            raise AuthenticationFailed("Account is not verified.")
+
+        return {
+            "email": user.email,
+            "access_token": user.get_access_token(),
+            "refresh_token": user.get_refresh_token(),
+        }
