@@ -1,2 +1,0 @@
-# Wally
-Expense Tracking API
