@@ -17,6 +17,8 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save()
 
+        return user
+
     def create_superuser(self, username, email=None, password=None):
         if username is None:
             raise TypeError("username must not be None")
