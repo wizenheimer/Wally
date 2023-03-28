@@ -56,3 +56,7 @@ class LoginSerializer(serializers.ModelSerializer):
             "access_token": user.get_access_token(),
             "refresh_token": user.get_refresh_token(),
         }
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    token = serializers.CharField()

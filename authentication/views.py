@@ -6,11 +6,19 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
+from rest_framework.views import APIView
 import jwt
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 
-from .serializers import RegisterSerializer, LoginSerializer
+# from drf_yasg.utils import swagger_auto_schema
+# from drf_yasg import openapi
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    VerifyEmailSerializer,
+)
 from .models import User
 
 
@@ -46,17 +54,68 @@ class RegisterView(generics.GenericAPIView):
         return Response(user_data, status=status.HTTP_201_CREATED)
 
 
-class VerifyEmail(generics.GenericAPIView):
-    # serializer_class = EmailVerificationSerializer
-    token_parameter_config = openapi.Parameter(
-        "token",
-        in_=openapi.IN_QUERY,
-        description="Access Token",
-        type=openapi.TYPE_STRING,
-    )
+# class VerifyEmail(generics.GenericAPIView):
+#     serializer_class = VerifyEmailSerializer
 
-    @swagger_auto_schema(manual_parameters=[token_parameter_config])
-    def get(self, request):
+#     @extend_schema(
+#         parameters=[
+#             OpenApiParameter(
+#                 name="token",
+#                 type=OpenApiTypes.STR,
+#                 required=True,
+#                 location=OpenApiParameter.QUERY,
+#                 description="Email Verification Token",
+#             ),
+#         ]
+#     )
+#     def get(self, request):
+#         token = request.GET.get("token")
+#         try:
+#             payload = jwt.decode(token, settings.SECRET_KEY, algorithms="HS256")
+
+#             user = User.objects.get(id=payload["user_id"])
+
+#             user.is_verified = True
+
+#             return Response(
+#                 {"email": "email successfully activated."},
+#                 status=status.HTTP_200_OK,
+#             )
+#         except jwt.DecodeError:
+#             return Response(
+#                 {"error": "Invalid Token."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+#         except jwt.ExpiredSignatureError:
+#             return Response(
+#                 {"error": "Activation Expired."},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+
+
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class VerifyEmail(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="token",
+                type=OpenApiTypes.STR,
+                required=True,
+                location=OpenApiParameter.QUERY,
+                description="Email Verification Token",
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
         token = request.GET.get("token")
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms="HS256")
@@ -64,6 +123,7 @@ class VerifyEmail(generics.GenericAPIView):
             user = User.objects.get(id=payload["user_id"])
 
             user.is_verified = True
+            user.save()
 
             return Response(
                 {"email": "email successfully activated."},
@@ -80,12 +140,3 @@ class VerifyEmail(generics.GenericAPIView):
                 {"error": "Activation Expired."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-
-class LoginView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
