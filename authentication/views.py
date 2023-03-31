@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -8,9 +7,17 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.views import APIView
 import jwt
-
-# from drf_yasg.utils import swagger_auto_schema
-# from drf_yasg import openapi
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import (
+    force_str,
+    smart_str,
+    smart_bytes,
+    DjangoUnicodeDecodeError,
+)
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
+from django.core.mail import send_mail
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
@@ -18,14 +25,14 @@ from .serializers import (
     RegisterSerializer,
     LoginSerializer,
     VerifyEmailSerializer,
+    PasswordResetSerializer,
+    GeneratePasswordResetToken,
 )
 from .models import User
-from .renderers import UserRenderer
 
 
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
-    renderer_classes = (UserRenderer,)
 
     def post(self, request):
         user = request.data
@@ -54,46 +61,6 @@ class RegisterView(generics.GenericAPIView):
         )
 
         return Response(user_data, status=status.HTTP_201_CREATED)
-
-
-# class VerifyEmail(generics.GenericAPIView):
-#     serializer_class = VerifyEmailSerializer
-
-#     @extend_schema(
-#         parameters=[
-#             OpenApiParameter(
-#                 name="token",
-#                 type=OpenApiTypes.STR,
-#                 required=True,
-#                 location=OpenApiParameter.QUERY,
-#                 description="Email Verification Token",
-#             ),
-#         ]
-#     )
-#     def get(self, request):
-#         token = request.GET.get("token")
-#         try:
-#             payload = jwt.decode(token, settings.SECRET_KEY, algorithms="HS256")
-
-#             user = User.objects.get(id=payload["user_id"])
-
-#             user.is_verified = True
-
-#             return Response(
-#                 {"email": "email successfully activated."},
-#                 status=status.HTTP_200_OK,
-#             )
-#         except jwt.DecodeError:
-#             return Response(
-#                 {"error": "Invalid Token."},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         except jwt.ExpiredSignatureError:
-#             return Response(
-#                 {"error": "Activation Expired."},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
 
 
 class LoginView(generics.GenericAPIView):
@@ -142,3 +109,54 @@ class VerifyEmail(APIView):
                 {"error": "Activation Expired."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class PasswordResetConfirm(generics.GenericAPIView):
+    serializer_class = PasswordResetSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        print(serializer.data)
+        uidb64 = serializer.data.get("uidb64")
+        password = serializer.data.get("password")
+
+        uid = smart_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(id=uid)
+        user.is_active = True
+        user.set_password(password)
+        user.save()
+
+        return Response({"message": "Password changed successfully."})
+
+
+class PasswordResetRequest(generics.GenericAPIView):
+    serializer_class = GeneratePasswordResetToken
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.data.get("email")
+        print(email)
+        user = User.objects.get(email=email)
+        user.is_active = False
+        uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+        token = PasswordResetTokenGenerator().make_token(user=user)
+
+        current_site = get_current_site(request).domain
+        relativeLink = reverse("password-reset-confirm")
+
+        absurl = (
+            "http://" + current_site + relativeLink + f"?uidb64={uidb64}&token={token}/"
+        )
+
+        send_mail(
+            subject="Verify email",
+            message=f"Link:{absurl}",
+            from_email="djangomailer@mail.com",
+            recipient_list=[
+                user.email,
+            ],
+        )
+
+        return Response({"message": "Password reset request sent successfully."})

@@ -1,7 +1,19 @@
 from rest_framework import serializers
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from django.contrib import auth
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from .models import User
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import (
+    force_str,
+    smart_str,
+    smart_bytes,
+    DjangoUnicodeDecodeError,
+)
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
+from django.core.mail import send_mail
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -60,3 +72,28 @@ class LoginSerializer(serializers.ModelSerializer):
 
 class VerifyEmailSerializer(serializers.Serializer):
     token = serializers.CharField()
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField()
+
+    def validate(self, attrs):
+        uidb64 = attrs.get("uidb64")
+        uid = smart_str(urlsafe_base64_decode(uidb64))
+        token = attrs.get("token")
+        user = User.objects.get(id=uid)
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            raise ValidationError("Token is invalid.")
+        return attrs
+
+
+class GeneratePasswordResetToken(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        if not User.objects.filter(email=email).exists():
+            raise ValidationError("User doesnot exist.")
+        return attrs
