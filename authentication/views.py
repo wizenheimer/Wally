@@ -20,6 +20,12 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
+from allauth.socialaccount.providers.twitter.views import TwitterOAuthAdapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.social_serializers import TwitterLoginSerializer
+from dj_rest_auth.registration.views import SocialLoginView
 
 from .serializers import (
     RegisterSerializer,
@@ -160,3 +166,86 @@ class PasswordResetRequest(generics.GenericAPIView):
         )
 
         return Response({"message": "Password reset request sent successfully."})
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="access_token",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="Access Token",
+        ),
+        OpenApiParameter(
+            name="code",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="code",
+        ),
+        OpenApiParameter(
+            name="id_token",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="id_token",
+        ),
+    ]
+)
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = "http://127.0.0.1:8000/accounts/google/login/callback/"
+    client_class = OAuth2Client
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="access_token",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="Access Token",
+        ),
+        OpenApiParameter(
+            name="code",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="code",
+        ),
+        OpenApiParameter(
+            name="id_token",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="id_token",
+        ),
+    ]
+)
+class FacebookLogin(SocialLoginView):
+    adapter_class = FacebookOAuth2Adapter
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="access_token",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="Access Token",
+        ),
+        OpenApiParameter(
+            name="token_secret",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="code",
+        ),
+    ]
+)
+class TwitterLogin(SocialLoginView):
+    serializer_class = TwitterLoginSerializer
+    adapter_class = TwitterOAuthAdapter

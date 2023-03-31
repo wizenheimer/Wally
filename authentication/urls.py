@@ -10,6 +10,8 @@ from .views import (
     PasswordResetRequest,
     PasswordResetConfirm,
 )
+from .views import GoogleLogin, FacebookLogin, TwitterLogin
+
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
@@ -27,4 +29,7 @@ urlpatterns = [
         PasswordResetConfirm.as_view(),
         name="password-reset-confirm",
     ),
+    path("google/", GoogleLogin.as_view(), name="google_login"),
+    path("facebook/", FacebookLogin.as_view(), name="fb_login"),
+    path("twitter/", TwitterLogin.as_view(), name="twitter_login"),
 ]
