@@ -20,10 +20,12 @@ from .serializers import (
     VerifyEmailSerializer,
 )
 from .models import User
+from .renderers import UserRenderer
 
 
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
+    renderer_classes = (UserRenderer,)
 
     def post(self, request):
         user = request.data
